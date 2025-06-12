@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "99xVN6mkejBlAgwzaef6OC/dw4/HP4ZLx4dFmSNAqX4=",
+  "Source": "CurrencyApi",
+  "BasePath": "_content/CurrencyApi",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}
