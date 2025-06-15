@@ -1,8 +1,25 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-
-
+import {
+  Container,
+  Paper,
+  Typography,
+  Grid,
+  TextField,
+  Button,
+  Box,
+  CircularProgress,
+  Alert,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle
+} from '@mui/material';
+import SaveIcon from '@mui/icons-material/Save';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 export default function RateDetails() {
   const { id } = useParams();
@@ -10,84 +27,307 @@ export default function RateDetails() {
 
   const [rate, setRate] = useState(null);
   const [form, setForm] = useState({
-    date: "",
+    date: "", // Expects DD.MM.YYYY. from backend
     currencyCode: "",
     currencyName: "",
+    unitValue: 1,
     buyRate: "",
     middleRate: "",
     sellRate: ""
   });
-  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+
+  // Function to format date from YYYY-MM-DD (from date picker) to DD.MM.YYYY. (for backend)
+  const formatDateForBackend = (dateString) => {
+    if (!dateString || !dateString.includes('-')) return dateString; // Already in DD.MM.YYYY. or empty
+    const [year, month, day] = dateString.split('-');
+    return `${day}.${month}.${year}.`;
+  };
+
+  // Function to format date from DD.MM.YYYY. (from backend) to YYYY-MM-DD (for date picker)
+  const formatDateForPicker = (dateString) => {
+    if (!dateString || !dateString.includes('.')) return dateString; // Already in YYYY-MM-DD or empty
+    const parts = dateString.split('.');
+    if (parts.length < 3) return dateString; // Invalid format
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  };
+
 
   useEffect(() => {
+    setLoading(true);
     axios.get(`http://localhost:5039/rates/${id}`)
       .then(res => {
-        setRate(res.data.data);
-        setForm(res.data.data); // populate form
+        const rateData = res.data.data;
+        setRate(rateData);
+        setForm({
+          ...rateData,
+          date: formatDateForPicker(rateData.date) // Convert for date picker
+        });
+        setLoading(false);
       })
-      .catch(err => setStatus("Ne mogu dohvatiti tečajnicu"));
+      .catch(err => {
+        console.error("Error fetching rate details:", err);
+        setError("Ne mogu dohvatiti detalje tečaja.");
+        setLoading(false);
+      });
   }, [id]);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm(prevForm => ({
+      ...prevForm,
+      [name]: name.endsWith("Rate") || name === "unitValue" ? (value === "" ? "" : Number(value)) : value
+    }));
   };
 
   const handleUpdate = () => {
-    if (!form.date || !form.currencyCode || !form.currencyName) {
-      setStatus("Sva polja moraju biti ispunjena.");
+    if (!form.date || !form.currencyCode || !form.currencyName || !form.unitValue) {
+      setError("Datum, šifra valute, naziv valute i jedinica su obavezni.");
+      setSuccess("");
       return;
     }
+    setIsSubmitting(true);
+    setError("");
+    setSuccess("");
 
-    axios.put(`http://localhost:5039/rates/${id}`, form)
+    const payload = {
+      ...form,
+      date: formatDateForBackend(form.date) // Convert back for backend
+    };
+
+    axios.put(`http://localhost:5039/rates/${id}`, payload)
       .then(() => {
-        setStatus("Tečajnica ažurirana.");
+        setSuccess("Tečaj uspješno ažuriran.");
+        setIsSubmitting(false);
+        // Optionally, refetch data or update local state if PUT returns the updated object
+        setRate(payload); // Optimistic update
       })
-      .catch(() => {
-        setStatus("Greška prilikom ažuriranja.");
+      .catch((err) => {
+        console.error("Error updating rate:", err);
+        setError("Greška prilikom ažuriranja tečaja. Provjerite konzolu za detalje.");
+        setIsSubmitting(false);
       });
   };
 
   const handleDelete = () => {
-    if (confirm("Jeste li sigurni da želite izbrisati ovu tečajnicu?")) {
-      axios.delete(`http://localhost:5039/rates/${id}`)
-        .then(() => navigate("/"))
-        .catch(() => setStatus("Greška prilikom brisanja."));
-    }
+    setOpenDeleteDialog(false); // Close dialog first
+    setIsSubmitting(true);
+    setError("");
+    setSuccess("");
+    axios.delete(`http://localhost:5039/rates/${id}`)
+      .then(() => {
+        setSuccess("Tečaj uspješno izbrisan. Preusmjeravam...");
+        setTimeout(() => navigate("/"), 2000); // Navigate back to list after a delay
+      })
+      .catch((err) => {
+        console.error("Error deleting rate:", err);
+        setError("Greška prilikom brisanja tečaja.");
+        setIsSubmitting(false);
+      });
   };
 
-  if (!rate) return <div>Učitavanje...</div>;
+  const handleClickOpenDeleteDialog = () => {
+    setOpenDeleteDialog(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setOpenDeleteDialog(false);
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="70vh">
+        <CircularProgress />
+        <Typography sx={{ marginLeft: 2 }}>Učitavanje detalja tečaja...</Typography>
+      </Box>
+    );
+  }
+
+  if (!rate && !loading) {
+    return (
+      <Container sx={{ marginTop: 4 }}>
+        <Alert severity="warning">Tečaj nije pronađen ili je došlo do greške.</Alert>
+        <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate("/")}
+            sx={{ marginTop: 2 }}
+        >
+            Natrag na listu
+        </Button>
+      </Container>
+    );
+  }
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Uredi tečajnicu</h1>
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxWidth: "400px" }}>
-        <label>Datum primjene</label>
-        <input name="date" value={form.date} onChange={handleChange} />
+    <Container maxWidth="md">
+      <Paper elevation={3} sx={{ padding: { xs: 2, sm: 3, md: 4 }, marginTop: 4, marginBottom: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom sx={{ textAlign: 'center', marginBottom: 3 }}>
+          Uredi Tečaj
+        </Typography>
 
-        <label>Šifra valute</label>
-        <input name="currencyCode" value={form.currencyCode} onChange={handleChange} />
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Datum primjene"
+              name="date"
+              type="date" // Use date type for better UX
+              value={form.date}
+              onChange={handleChange}
+              InputLabelProps={{ shrink: true }}
+              variant="outlined"
+              disabled={isSubmitting}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Šifra valute"
+              name="currencyCode"
+              value={form.currencyCode}
+              onChange={handleChange}
+              variant="outlined"
+              disabled={isSubmitting}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Naziv valute"
+              name="currencyName"
+              value={form.currencyName}
+              onChange={handleChange}
+              variant="outlined"
+              disabled={isSubmitting}
+            />
+          </Grid>
+           <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Jedinica"
+              name="unitValue"
+              type="number"
+              value={form.unitValue}
+              onChange={handleChange}
+              variant="outlined"
+              InputProps={{ inputProps: { min: 1 } }}
+              disabled={isSubmitting}
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Kupovni tečaj"
+              name="buyRate"
+              type="number"
+              value={form.buyRate}
+              onChange={handleChange}
+              variant="outlined"
+              InputProps={{ step: "any" }}
+              disabled={isSubmitting}
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Srednji tečaj"
+              name="middleRate"
+              type="number"
+              value={form.middleRate}
+              onChange={handleChange}
+              variant="outlined"
+              InputProps={{ step: "any" }}
+              disabled={isSubmitting}
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Prodajni tečaj"
+              name="sellRate"
+              type="number"
+              value={form.sellRate}
+              onChange={handleChange}
+              variant="outlined"
+              InputProps={{ step: "any" }}
+              disabled={isSubmitting}
+            />
+          </Grid>
 
-        <label>Valuta</label>
-        <input name="currencyName" value={form.currencyName} onChange={handleChange} />
+          {error && (
+            <Grid item xs={12}>
+              <Alert severity="error">{error}</Alert>
+            </Grid>
+          )}
+          {success && (
+            <Grid item xs={12}>
+              <Alert severity="success">{success}</Alert>
+            </Grid>
+          )}
 
-        <label>Kupovni tečaj</label>
-        <input name="buyRate" type="number" step="any" value={form.buyRate} onChange={handleChange} />
+          <Grid item xs={12} container spacing={2} justifyContent="flex-end" sx={{ marginTop: 2 }}>
+            <Grid item>
+                <Button
+                    variant="outlined"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => navigate("/")}
+                    disabled={isSubmitting}
+                >
+                    Odustani
+                </Button>
+            </Grid>
+            <Grid item>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                onClick={handleUpdate}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Spremam..." : "Spremi izmjene"}
+              </Button>
+            </Grid>
+            <Grid item>
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={handleClickOpenDeleteDialog}
+                disabled={isSubmitting}
+              >
+                Izbriši
+              </Button>
+            </Grid>
+          </Grid>
+        </Grid>
+      </Paper>
 
-        <label>Srednji tečaj</label>
-        <input name="middleRate" type="number" step="any" value={form.middleRate} onChange={handleChange} />
-
-        <label>Prodajni tečaj</label>
-        <input name="sellRate" type="number" step="any" value={form.sellRate} onChange={handleChange} />
-
-        <button onClick={handleUpdate}>Spremi izmjene</button>
-        <button onClick={handleDelete} style={{ backgroundColor: "red", color: "white" }}>Izbriši</button>
-        <p>{status}</p>
-      </div>
-    </div>
-    
-
-    
+      <Dialog
+        open={openDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">Potvrda brisanja</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Jeste li sigurni da želite trajno izbrisati ovaj tečaj? Ova akcija se ne može poništiti.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} color="primary" disabled={isSubmitting}>
+            Odustani
+          </Button>
+          <Button onClick={handleDelete} color="error" autoFocus disabled={isSubmitting}>
+            {isSubmitting ? <CircularProgress size={20} /> : "Izbriši"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
-
-  
 }

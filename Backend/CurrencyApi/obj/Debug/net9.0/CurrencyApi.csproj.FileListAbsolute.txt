@@ -157,3 +157,4 @@
 /Users/tonigaspert/ProjektniZadatak/Projektni-zadatak/Backend/CurrencyApi/obj/Debug/net9.0/CurrencyApi.genruntimeconfig.cache
 /Users/tonigaspert/ProjektniZadatak/Projektni-zadatak/Backend/CurrencyApi/obj/Debug/net9.0/ref/CurrencyApi.dll
 /Users/tonigaspert/ProjektniZadatak/Projektni-zadatak/Backend/CurrencyApi/bin/Debug/net9.0/Cronos.dll
+/Users/tonigaspert/ProjektniZadatak/Projektni-zadatak/Backend/CurrencyApi/obj/Debug/net9.0/CurrencyApi.sourcelink.json
