@@ -173,7 +173,7 @@ namespace CurrencyApi.Controllers
             //     return Conflict(new { status = "Another exchange rate already exists for this date and currency." });
             // }
 
-            // Apply updates
+            
             rate.Date = parsedDate;
             rate.CurrencyCode = dto.CurrencyCode;
             rate.CurrencyName = dto.CurrencyName;

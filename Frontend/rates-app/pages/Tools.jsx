@@ -15,11 +15,11 @@ import {
   CircularProgress,
   Alert
 } from '@mui/material';
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz'; // Icon for the button
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 export default function Tools() {
   const [allRates, setAllRates] = useState([]);
-  const [date, setDate] = useState(""); // YYYY-MM-DD format for date input
+  const [date, setDate] = useState("");
   const [amount, setAmount] = useState(1);
   const [fromCurrency, setFromCurrency] = useState("USD");
   const [toCurrency, setToCurrency] = useState("EUR");
@@ -28,32 +28,46 @@ export default function Tools() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
+  const [uniqueCurrencyOptions, setUniqueCurrencyOptions] = useState([]);
 
   useEffect(() => {
     axios
-      .get("http://localhost:5039/rates", { params: { page: 1, pageSize: 1000 } }) // Fetch more rates if needed
+      .get("http://localhost:5039/rates", { params: { page: 1, pageSize: 1000 } })
       .then(res => {
-        setAllRates(res.data.data);
+        const ratesData = res.data.data || [];
+        setAllRates(ratesData);
+        const options = [...new Set(ratesData.map(r => r.currencyName))].sort();
+        setUniqueCurrencyOptions(options);
+
+        if (options.length > 0) {
+          if (!options.includes("USD")) {
+            setFromCurrency(options[0]);
+          } else {
+            setFromCurrency("USD");
+          }
+          if (!options.includes("EUR")) {
+            setToCurrency(options.length > 1 ? options[1] : options[0]);
+          } else {
+            setToCurrency("EUR");
+          }
+        }
         setLoading(false);
       })
       .catch(err => {
         console.error("Error fetching rates:", err);
         setError("Failed to load currency rates. Please try again later.");
+        setUniqueCurrencyOptions([]);
         setLoading(false);
       });
   }, []);
 
   const getFormattedDateForFiltering = (inputDate) => {
     const d = inputDate ? new Date(inputDate) : new Date();
-    // Adjust for timezone offset to ensure the selected date is used correctly
     const userTimezoneOffset = d.getTimezoneOffset() * 60000;
     const correctedDate = new Date(d.getTime() - userTimezoneOffset);
-
     const pad = (n) => (n < 10 ? `0${n}` : n);
-    // Backend expects DD.MM.YYYY.
     return `${pad(correctedDate.getDate())}.${pad(correctedDate.getMonth() + 1)}.${correctedDate.getFullYear()}.`;
   };
-
 
   const convert = () => {
     setCalculating(true);
@@ -75,7 +89,7 @@ export default function Tools() {
     const ratesForDate = allRates.filter(r => r.date.trim() === filterDate.trim());
 
     if (ratesForDate.length === 0) {
-      setError(`Nema dostupnih tečajeva za datum ${date ? new Date(date).toLocaleDateString() : 'danas'}.`);
+      setError(`Nema dostupnih tečajeva za datum ${date ? new Date(date).toLocaleDateString('hr-HR') : 'danas'}.`);
       setCalculating(false);
       return;
     }
@@ -103,8 +117,6 @@ export default function Tools() {
     setCalculating(false);
   };
 
-  const uniqueCurrencyOptions = loading ? [] : [...new Set(allRates.map(r => r.currencyName))].sort();
-
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="70vh">
@@ -122,7 +134,7 @@ export default function Tools() {
         </Typography>
 
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={6}>
+          <Grid xs={12} sm={6}>
             <TextField
               fullWidth
               label="Iznos"
@@ -133,7 +145,7 @@ export default function Tools() {
               InputProps={{ inputProps: { min: 0.01, step: "any" } }}
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid xs={12} sm={6}>
             <TextField
               fullWidth
               label="Datum (opcionalno, danas po defaultu)"
@@ -144,12 +156,12 @@ export default function Tools() {
               variant="outlined"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid xs={12} sm={6}>
             <FormControl fullWidth variant="outlined">
               <InputLabel id="from-currency-label">Iz valute</InputLabel>
               <Select
                 labelId="from-currency-label"
-                value={fromCurrency}
+                value={uniqueCurrencyOptions.includes(fromCurrency) ? fromCurrency : ""}
                 onChange={(e) => setFromCurrency(e.target.value)}
                 label="Iz valute"
               >
@@ -161,12 +173,12 @@ export default function Tools() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid xs={12} sm={6}>
             <FormControl fullWidth variant="outlined">
               <InputLabel id="to-currency-label">U valutu</InputLabel>
               <Select
                 labelId="to-currency-label"
-                value={toCurrency}
+                value={uniqueCurrencyOptions.includes(toCurrency) ? toCurrency : ""}
                 onChange={(e) => setToCurrency(e.target.value)}
                 label="U valutu"
               >
@@ -178,7 +190,7 @@ export default function Tools() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12}>
+          <Grid xs={12}>
             <FormControl fullWidth variant="outlined">
               <InputLabel id="rate-type-label">Vrsta tečaja</InputLabel>
               <Select
@@ -193,13 +205,13 @@ export default function Tools() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sx={{ textAlign: 'center', marginTop: 2 }}>
+          <Grid xs={12} sx={{ textAlign: 'center', marginTop: 2 }}>
             <Button
               variant="contained"
               color="primary"
               size="large"
               onClick={convert}
-              disabled={calculating}
+              disabled={calculating || loading}
               startIcon={calculating ? <CircularProgress size={20} color="inherit" /> : <SwapHorizIcon />}
             >
               {calculating ? "Računam..." : "Konvertiraj"}
@@ -213,7 +225,7 @@ export default function Tools() {
           </Alert>
         )}
 
-        {result && (
+        {result && !error && (
           <Paper elevation={1} sx={{ padding: 2, marginTop: 3, backgroundColor: 'success.light' }}>
             <Typography variant="h6" sx={{ textAlign: 'center', color: 'success.contrastText' }}>
               Rezultat: {result}

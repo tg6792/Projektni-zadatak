@@ -13,78 +13,96 @@ export default function TrendChart() {
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currencyOptions, setCurrencyOptions] = useState([]);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     axios.get(
       "http://localhost:5039/rates",
-      { params: { page: 1, pageSize: 1000 } } // Fetch a large enough set for trend analysis
+      { params: { page: 1, pageSize: 1000 } }
     )
       .then(res => {
-        setRates(res.data.data);
-        // console.log("Rates loaded:", res.data.data.length);
-        // console.log("Sample rates:", res.data.data.slice(0, 5));
-        // console.log("Available dates:", [...new Set(res.data.data.map(r => r.date))]);
+        const fetchedRates = res.data.data || [];
+        setRates(fetchedRates);
+        const options = [...new Set(fetchedRates.map(r => r.currencyName))].sort();
+        setCurrencyOptions(options);
+
+        if (options.length > 0) {
+          if (!options.includes("USD")) {
+            setBase(options[0]);
+          } else {
+            setBase("USD");
+          }
+          if (!options.includes("EUR")) {
+            setTarget(options.length > 1 ? options[1] : options[0]);
+          } else {
+            setTarget("EUR");
+          }
+        }
         setLoading(false);
       })
       .catch(err => {
         console.error("Error fetching rates:", err);
         setError("Failed to load rates data.");
+        setCurrencyOptions([]);
         setLoading(false);
       });
   }, []);
 
   useEffect(() => {
-    if (!rates.length) return;
-
-    const today = new Date();
-    const from = new Date(today);
-    from.setDate(today.getDate() - parseInt(range));
-
-    const pad = n => (n < 10 ? "0" + n : n);
-    // Ensure this date format matches your backend's date format
-    // Example: If backend is YYYY-MM-DD
-    // const formatDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    // Example: If backend is DD.MM.YYYY.
-    const formatDate = (d) => `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}.`;
-
-
-    const dates = [];
-    for (let d = new Date(from); d <= today; d.setDate(d.getDate() + 1)) {
-      dates.push(formatDate(new Date(d)));
+    if (!rates.length || !base || !target || currencyOptions.length === 0) {
+      setChartData([]);
+      return;
+    }
+    
+    if (!currencyOptions.includes(base) || !currencyOptions.includes(target)) {
+        setChartData([]);
+        return;
     }
 
-    // console.log("Generated date range for chart:", dates);
-    const filtered = rates.filter(r =>
-      dates.includes(r.date) && [base, target].includes(r.currencyName)
-    );
-    // console.log("Filtered count for chart:", filtered.length);
-    // console.log("Sample filtered for chart:", filtered.slice(0, 5));
+    const today = new Date();
+    const fromDate = new Date(today);
+    fromDate.setDate(today.getDate() - parseInt(range));
+
+    const pad = n => (n < 10 ? "0" + n : n);
+    const formatDateForCompare = (d) => `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}.`;
+    
+    const formatDateForDisplay = (dateString) => {
+        const parts = dateString.split('.');
+        if (parts.length === 3) {
+            return `${parts[0]}.${parts[1]}`;
+        }
+        return dateString;
+    };
+
+
+    const datesInRange = [];
+    for (let d = new Date(fromDate); d <= today; d.setDate(d.getDate() + 1)) {
+      datesInRange.push(formatDateForCompare(new Date(d)));
+    }
 
     const result = [];
-    for (let d of dates) {
-      const baseRateEntry = filtered.find(r => r.date === d && r.currencyName === base);
-      const targetRateEntry = filtered.find(r => r.date === d && r.currencyName === target);
+    for (let d of datesInRange) {
+      const baseRateEntry = rates.find(r => r.date === d && r.currencyName === base);
+      const targetRateEntry = rates.find(r => r.date === d && r.currencyName === target);
 
       if (baseRateEntry && targetRateEntry && baseRateEntry.middleRate && targetRateEntry.middleRate) {
-        const baseRate = parseFloat(String(baseRateEntry.middleRate).replace(',', '.'));
-        const targetRate = parseFloat(String(targetRateEntry.middleRate).replace(',', '.'));
-        if (targetRate !== 0) { // Avoid division by zero
+        const baseRateValue = parseFloat(String(baseRateEntry.middleRate).replace(',', '.'));
+        const targetRateValue = parseFloat(String(targetRateEntry.middleRate).replace(',', '.'));
+        if (targetRateValue !== 0 && !isNaN(baseRateValue) && !isNaN(targetRateValue)) {
             result.push({
-              date: d.substring(0, 5), // Shorten date for display: DD.MM
-              rate: (baseRate / targetRate).toFixed(4)
+              date: formatDateForDisplay(d),
+              rate: parseFloat((baseRateValue / targetRateValue).toFixed(4))
             });
         }
       }
     }
-    // console.log("Chart data:", result);
     setChartData(result);
-  }, [rates, base, target, range]);
+  }, [rates, base, target, range, currencyOptions]);
 
-  const currencyOptions = [...new Set(rates.map(r => r.currencyName))].sort();
 
-  if (loading) {
+  if (loading && currencyOptions.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="70vh">
         <CircularProgress />
@@ -108,12 +126,12 @@ export default function TrendChart() {
       </Typography>
 
       <Grid container spacing={3} alignItems="flex-end" sx={{ marginBottom: "32px" }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid xs={12} sm={6} md={3}>
           <FormControl fullWidth>
             <InputLabel id="base-currency-label">Osnovna valuta</InputLabel>
             <Select
               labelId="base-currency-label"
-              value={base}
+              value={currencyOptions.includes(base) ? base : ""}
               label="Osnovna valuta"
               onChange={e => setBase(e.target.value)}
             >
@@ -122,12 +140,12 @@ export default function TrendChart() {
           </FormControl>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid xs={12} sm={6} md={3}>
           <FormControl fullWidth>
             <InputLabel id="target-currency-label">U odnosu na</InputLabel>
             <Select
               labelId="target-currency-label"
-              value={target}
+              value={currencyOptions.includes(target) ? target : ""}
               label="U odnosu na"
               onChange={e => setTarget(e.target.value)}
             >
@@ -136,7 +154,7 @@ export default function TrendChart() {
           </FormControl>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid xs={12} sm={6} md={3}>
           <FormControl fullWidth>
             <InputLabel id="range-label">Raspon</InputLabel>
             <Select
@@ -148,7 +166,6 @@ export default function TrendChart() {
               <MenuItem value="7">Zadnjih 7 dana</MenuItem>
               <MenuItem value="15">Zadnjih 15 dana</MenuItem>
               <MenuItem value="30">Zadnjih 30 dana</MenuItem>
-              
             </Select>
           </FormControl>
         </Grid>
@@ -160,15 +177,20 @@ export default function TrendChart() {
             <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
-              <YAxis domain={['auto', 'auto']} tickFormatter={(tick) => parseFloat(tick).toFixed(4)} />
-              <Tooltip formatter={(value) => parseFloat(value).toFixed(4)} />
+              <YAxis 
+                domain={['auto', 'auto']} 
+                tickFormatter={(tick) => typeof tick === 'number' ? tick.toFixed(4) : String(tick)} 
+              />
+              <Tooltip 
+                formatter={(value) => typeof value === 'number' ? value.toFixed(4) : String(value)} 
+              />
               <Line type="monotone" dataKey="rate" stroke="#8884d8" strokeWidth={2} activeDot={{ r: 8 }} dot={{r: 3}}/>
             </LineChart>
           </ResponsiveContainer>
         </Box>
       ) : (
         <Typography sx={{textAlign: 'center', marginTop: 4}}>
-          Nema dostupnih podataka za prikaz grafa s odabranim parametrima. Molimo provjerite formate datuma ili raspoloživost tečaja.
+          Nema dostupnih podataka za prikaz grafa s odabranim parametrima. Molimo provjerite valute ili raspon.
         </Typography>
       )}
     </Paper>

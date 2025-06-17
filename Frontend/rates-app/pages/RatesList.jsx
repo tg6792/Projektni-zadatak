@@ -41,13 +41,13 @@ const debounce = (func, delay) => {
 };
 
 export default function RatesList() {
-  const [allRatesForUniqueCurrencies, setAllRatesForUniqueCurrencies] = useState([]); // Used to derive unique currencies
-  const [displayedRates, setDisplayedRates] = useState([]); // Data for the current page
+  const [allRatesForUniqueCurrencies, setAllRatesForUniqueCurrencies] = useState([]); 
+  const [displayedRates, setDisplayedRates] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [page, setPage] = useState(0); // MUI TablePagination is 0-indexed
+  const [page, setPage] = useState(0); 
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [totalCount, setTotalCount] = useState(0); // Total records from backend
+  const [totalCount, setTotalCount] = useState(0); 
 
   const [filterDate, setFilterDate] = useState("");
   const [filterCurrency, setFilterCurrency] = useState("");
@@ -65,14 +65,13 @@ export default function RatesList() {
     setError("");
 
     const params = {
-      page: currentPage + 1, // Backend is 1-indexed
+      page: currentPage + 1, 
       pageSize: currentRowsPerPage,
-      sort: "desc", // Default sort, or make it configurable
+      sort: "desc", 
     };
 
     if (dateFilter) {
-      // Assuming backend expects date in a format it can parse (e.g., YYYY-MM-DD or DD.MM.YYYY.)
-      // If your backend expects fromDate and toDate for a single day filter:
+  
       params.fromDate = dateFilter;
       params.toDate = dateFilter;
     }
@@ -93,32 +92,32 @@ export default function RatesList() {
         setTotalCount(0);
         setLoading(false);
       });
-  }, []); // Removed dependencies that cause re-fetch on every render, will be called by other useEffects
+  }, []); 
 
-  // Effect for fetching initial unique currencies
+
   useEffect(() => {
-    axios.get("http://localhost:5039/rates", { params: { page: 1, pageSize: 5000 } }) // Fetch a large set for unique currencies
+    axios.get("http://localhost:5039/rates", { params: { page: 1, pageSize: 5000 } }) 
       .then(res => {
         const ratesData = res.data.data || [];
-        setAllRatesForUniqueCurrencies(ratesData); // Store for deriving unique currencies
+        setAllRatesForUniqueCurrencies(ratesData); 
         const currencies = [...new Set(ratesData.map(rate => rate.currencyName))].sort();
         setUniqueCurrencies(currencies);
       })
       .catch(err => {
         console.error("Error fetching initial full list for currencies:", err);
-        // Potentially set an error state for unique currencies loading
+       
       });
-  }, []); // Runs once on mount
+  }, []); 
 
-  // Effect for fetching data when page, rowsPerPage, or filters change
+  
   useEffect(() => {
     fetchRates(page, rowsPerPage, filterDate, filterCurrency);
   }, [page, rowsPerPage, filterDate, filterCurrency, fetchRates]);
 
 
   const debouncedFilterTrigger = useCallback(debounce(() => {
-    setPage(0); // Reset to first page on filter change
-    // The main useEffect will pick up filterDate/filterCurrency changes and re-fetch
+    setPage(0); 
+    
   }, 500), []);
 
 
@@ -133,14 +132,14 @@ export default function RatesList() {
   };
 
   const handleApplyFilters = () => {
-    setPage(0); // Reset to first page
-    fetchRates(0, rowsPerPage, filterDate, filterCurrency); // Manually trigger fetch
+    setPage(0); 
+    fetchRates(0, rowsPerPage, filterDate, filterCurrency); 
   };
 
   const clearFilters = () => {
     setFilterDate("");
     setFilterCurrency("");
-    setPage(0); // Reset to first page, useEffect will re-fetch with cleared filters
+    setPage(0); 
   };
 
   const handleChangePage = (event, newPage) => {
@@ -158,7 +157,7 @@ export default function RatesList() {
     setCreateSuccess("");
     const d = new Date(data.date);
     const pad = n => (n < 10 ? `0${n}` : n);
-    // Ensure date is formatted as DD.MM.YYYY. for the backend
+   
     const formattedDate = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}.`;
 
     axios.post("http://localhost:5039/rates", {
@@ -172,9 +171,9 @@ export default function RatesList() {
       .then(res => {
         setCreateSuccess("Tečajnica uspješno kreirana!");
         reset();
-        fetchRates(page, rowsPerPage, filterDate, filterCurrency); // Refetch current page
+        fetchRates(page, rowsPerPage, filterDate, filterCurrency);
         
-        // Update unique currencies if a new one was added
+       
         const newCurrencyName = res.data.data?.currencyName;
         if (newCurrencyName && !uniqueCurrencies.includes(newCurrencyName)) {
             setUniqueCurrencies(prev => [...new Set([...prev, newCurrencyName])].sort());
@@ -184,7 +183,7 @@ export default function RatesList() {
         if (err.response && err.response.data && err.response.data.message) {
           setCreateError(err.response.data.message);
         } else if (err.response && err.response.data && err.response.data.errors) {
-            // Handle validation errors from backend if they are structured
+            
             const errorMessages = Object.values(err.response.data.errors).flat().join(' ');
             setCreateError(`Greška: ${errorMessages}`);
         }
@@ -195,7 +194,7 @@ export default function RatesList() {
       .finally(() => setCreateLoading(false));
   };
 
-  if (loading && displayedRates.length === 0 && page === 0) { // Show initial loading screen
+  if (loading && displayedRates.length === 0 && page === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="70vh">
         <CircularProgress />
@@ -204,7 +203,7 @@ export default function RatesList() {
     );
   }
 
-  if (error && displayedRates.length === 0) { // Show error if initial load failed
+  if (error && displayedRates.length === 0) { 
     return (
       <Container sx={{ marginTop: 4 }}>
         <Alert severity="error">{error}</Alert>
@@ -222,7 +221,7 @@ export default function RatesList() {
         <Typography variant="h6" gutterBottom>Kreiranje tečajnice</Typography>
         <form onSubmit={handleSubmit(onCreate)}>
           <Grid container spacing={2}>
-            <Grid xs={12} sm={6} md={3}> {/* Removed item prop, adjusted md for better layout */}
+            <Grid xs={12} sm={6} md={3}> 
               <TextField
                 fullWidth
                 label="Datum primjene"
@@ -346,13 +345,13 @@ export default function RatesList() {
           <Grid xs={12} sm={2}>
             <Button
               fullWidth
-              variant="outlined" // Changed to outlined for distinction from create
+              variant="outlined" 
               onClick={clearFilters}
             >
               Očisti
             </Button>
           </Grid>
-          {/* Removed explicit "Traži" button as filters apply on change (debounced) */}
+          
         </Grid>
       </Paper>
 
@@ -371,7 +370,7 @@ export default function RatesList() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {loading && ( // Show spinner overlay on table reload or initial load with some data
+              {loading && ( 
                 <TableRow>
                     <TableCell colSpan={7} align="center">
                         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 2 }}>
@@ -382,7 +381,7 @@ export default function RatesList() {
                 </TableRow>
               )}
               {!loading && displayedRates.map((rate) => (
-                rate && rate.id && ( // Added check for rate.id for key
+                rate && rate.id && ( 
                   <TableRow hover key={rate.id}>
                     <TableCell>{rate.date}</TableCell>
                     <TableCell>{rate.currencyCode}</TableCell>

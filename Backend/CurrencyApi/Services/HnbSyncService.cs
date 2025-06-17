@@ -30,7 +30,7 @@ namespace CurrencyApi.Services
                     _nextRun = _schedule.GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.Local);
                 }
 
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); // check every minute
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); 
             }
         }
 
