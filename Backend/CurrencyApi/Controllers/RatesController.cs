@@ -161,17 +161,17 @@ namespace CurrencyApi.Controllers
                 return NotFound(new { status = $"Exchange rate with ID {id} not found." });
             }
 
-            // Check for duplicate (but skip self)
-            bool duplicate = await _context.ExchangeRates.AnyAsync(r =>
-                r.Id != id &&
-                r.Date.Date == parsedDate &&
-                r.CurrencyCode == dto.CurrencyCode &&
-                r.CurrencyName == dto.CurrencyName);
+            // // Check for duplicate (but skip self)
+            // bool duplicate = await _context.ExchangeRates.AnyAsync(r =>
+            //     r.Id != id &&
+            //     r.Date.Date == parsedDate &&
+            //     r.CurrencyCode == dto.CurrencyCode &&
+            //     r.CurrencyName == dto.CurrencyName); 
 
-            if (duplicate)
-            {
-                return Conflict(new { status = "Another exchange rate already exists for this date and currency." });
-            }
+            // if (duplicate)
+            // {
+            //     return Conflict(new { status = "Another exchange rate already exists for this date and currency." });
+            // }
 
             // Apply updates
             rate.Date = parsedDate;

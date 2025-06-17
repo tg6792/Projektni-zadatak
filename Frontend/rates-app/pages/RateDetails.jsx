@@ -27,10 +27,10 @@ export default function RateDetails() {
 
   const [rate, setRate] = useState(null);
   const [form, setForm] = useState({
-    date: "", // Expects DD.MM.YYYY. from backend
+    date: "", 
     currencyCode: "",
     currencyName: "",
-    unitValue: 1,
+   
     buyRate: "",
     middleRate: "",
     sellRate: ""
@@ -41,18 +41,18 @@ export default function RateDetails() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
-  // Function to format date from YYYY-MM-DD (from date picker) to DD.MM.YYYY. (for backend)
+  
   const formatDateForBackend = (dateString) => {
-    if (!dateString || !dateString.includes('-')) return dateString; // Already in DD.MM.YYYY. or empty
+    if (!dateString || !dateString.includes('-')) return dateString; 
     const [year, month, day] = dateString.split('-');
     return `${day}.${month}.${year}.`;
   };
 
-  // Function to format date from DD.MM.YYYY. (from backend) to YYYY-MM-DD (for date picker)
+
   const formatDateForPicker = (dateString) => {
-    if (!dateString || !dateString.includes('.')) return dateString; // Already in YYYY-MM-DD or empty
+    if (!dateString || !dateString.includes('.')) return dateString; 
     const parts = dateString.split('.');
-    if (parts.length < 3) return dateString; // Invalid format
+    if (parts.length < 3) return dateString; 
     return `${parts[2]}-${parts[1]}-${parts[0]}`;
   };
 
@@ -65,7 +65,7 @@ export default function RateDetails() {
         setRate(rateData);
         setForm({
           ...rateData,
-          date: formatDateForPicker(rateData.date) // Convert for date picker
+          date: formatDateForPicker(rateData.date) 
         });
         setLoading(false);
       })
@@ -85,10 +85,10 @@ export default function RateDetails() {
   };
 
   const handleUpdate = () => {
-    if (!form.date || !form.currencyCode || !form.currencyName || !form.unitValue) {
-      setError("Datum, šifra valute, naziv valute i jedinica su obavezni.");
-      setSuccess("");
-      return;
+    if (!form.date || !form.currencyCode || !form.currencyName) {
+        setError("Datum, šifra valute i naziv valute su obavezni.");
+        setSuccess("");
+        return;
     }
     setIsSubmitting(true);
     setError("");
@@ -96,15 +96,15 @@ export default function RateDetails() {
 
     const payload = {
       ...form,
-      date: formatDateForBackend(form.date) // Convert back for backend
+      date: formatDateForBackend(form.date) 
     };
 
     axios.put(`http://localhost:5039/rates/${id}`, payload)
       .then(() => {
         setSuccess("Tečaj uspješno ažuriran.");
         setIsSubmitting(false);
-        // Optionally, refetch data or update local state if PUT returns the updated object
-        setRate(payload); // Optimistic update
+        
+        setRate(payload); 
       })
       .catch((err) => {
         console.error("Error updating rate:", err);
@@ -114,14 +114,14 @@ export default function RateDetails() {
   };
 
   const handleDelete = () => {
-    setOpenDeleteDialog(false); // Close dialog first
+    setOpenDeleteDialog(false); 
     setIsSubmitting(true);
     setError("");
     setSuccess("");
     axios.delete(`http://localhost:5039/rates/${id}`)
       .then(() => {
         setSuccess("Tečaj uspješno izbrisan. Preusmjeravam...");
-        setTimeout(() => navigate("/"), 2000); // Navigate back to list after a delay
+        setTimeout(() => navigate("/"), 2000); 
       })
       .catch((err) => {
         console.error("Error deleting rate:", err);
@@ -176,7 +176,7 @@ export default function RateDetails() {
               fullWidth
               label="Datum primjene"
               name="date"
-              type="date" // Use date type for better UX
+              type="date" 
               value={form.date}
               onChange={handleChange}
               InputLabelProps={{ shrink: true }}
@@ -206,19 +206,7 @@ export default function RateDetails() {
               disabled={isSubmitting}
             />
           </Grid>
-           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Jedinica"
-              name="unitValue"
-              type="number"
-              value={form.unitValue}
-              onChange={handleChange}
-              variant="outlined"
-              InputProps={{ inputProps: { min: 1 } }}
-              disabled={isSubmitting}
-            />
-          </Grid>
+           
           <Grid item xs={12} sm={4}>
             <TextField
               fullWidth

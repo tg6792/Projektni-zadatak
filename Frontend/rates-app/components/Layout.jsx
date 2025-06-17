@@ -9,11 +9,11 @@ export default function Layout({ children }) {
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Rates App
+            Projektni Zadatak
           </Typography>
-          <Button color="inherit" component={RouterLink} to="/">Rates List</Button>
-          <Button color="inherit" component={RouterLink} to="/trend">Trend Chart</Button>
-          <Button color="inherit" component={RouterLink} to="/tools">Tools</Button>
+          <Button color="inherit" component={RouterLink} to="/">Tečajnice</Button>
+          <Button color="inherit" component={RouterLink} to="/trend">Diagram</Button>
+          <Button color="inherit" component={RouterLink} to="/tools">Kalkulator</Button>
         </Toolbar>
       </AppBar>
       <Container sx={{ marginTop: '20px', paddingBottom: '20px' }}>
